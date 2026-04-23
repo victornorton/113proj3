@@ -3,3 +3,12 @@ To clarify, I want the behavior of the points to change step-by-step, similar to
 Can we further consider whether a backend is necessary? I am drawn to options that don't require a server, because I don't want to spend a lot of money, and I've found that free options like render.com have annoynig downsides like long spin-up times.
 If I still want other people to access this project from their own devices at any time, what are the best remaing options?
 Pre-computing is unfortunately not feasible. I am willing to reconsider a backend method if it is the only way to achieve true interactivity and good performance.
+create a file, spec.md that gives a detailed description for each of the necessary components of the backend implementation of this project. Make sure to specify expected behavior, error handling, and include a set of acceptance conditions that must be passed.
+
+*NOTE* I didn't like what I got from the above prompt so the SPEC.md file you see is still written entirely by me.
+
+Carefully read SPEC.md and add to it a list of acceptance criteria that must be passed to ensure the the project displayed all of the desired behavior. If any confusion arises from SPEC.md ask me to clarify. Do not attempt to create the actual files for index.html or app.py yet.
+
+*never mind, after writing for a long time I decided to see if the AI could write acceptance criteria based on the description I had written so far.*
+
+1: The text box/slider set up would be ideal. 2: The points should appear instantly, no animation is needed. 3: The energy and volume RSD statistics should be off be default, and those are the only ones that I have planned at the moment. 4: I leave it for the user to decide when the performance is poor, no official threshold is needed. 5: I should clarify that the target fps is only meant to be an upper, not lower limit. If the fsp dips below the target at any point the app doesn't need to intervene, it's just meant to serve as a tool for the user to see how well the app is handling the simulation. The user may very well push things until low fps occurs if they wish. Now that I think of it It would be nice if the border of the fps outline turns yellow whenever the fps dips below the target and red when less than half the target. The default color should probably be green in this case. Feel free to update SPEC.md to reflect this additional information I have given you.

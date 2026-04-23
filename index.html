@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riesz Potential Interactive Particle Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Statistics Bar at Top */
+        .stats-bar {
+            background-color: #2d2d2d;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-item input[type="checkbox"] {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .stat-value {
+            color: #64b5f6;
+            font-weight: bold;
+            min-width: 100px;
+        }
+
+        /* Main Layout */
+        .main-content {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* Canvas and Controls */
+        .canvas-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .canvas-container {
+            background-color: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            aspect-ratio: 1;
+            position: relative;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a1a;
+            border: 1px solid #555;
+            border-radius: 2px;
+            cursor: crosshair;
+        }
+
+        /* Axis Labels */
+        .axis-label {
+            position: absolute;
+            font-size: 12px;
+            color: #888;
+            pointer-events: none;
+        }
+
+        .x-label {
+            bottom: 10px;
+            right: 10px;
+        }
+
+        .y-label {
+            top: 10px;
+            left: 10px;
+        }
+
+        /* Control Bar (FPS and Point Tools) */
+        .control-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            background-color: #2d2d2d;
+            padding: 12px;
+            border-radius: 4px;
+        }
+
+        /* FPS Monitor */
+        .fps-monitor {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border: 2px solid #4CAF50;
+            border-radius: 4px;
+            background-color: #1a1a1a;
+            transition: border-color 0.3s;
+        }
+
+        .fps-monitor.yellow {
+            border-color: #FFC107;
+        }
+
+        .fps-monitor.red {
+            border-color: #F44336;
+        }
+
+        .fps-monitor-content {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+        }
+
+        .fps-input {
+            width: 50px;
+            padding: 4px;
+            background-color: #2d2d2d;
+            border: 1px solid #555;
+            color: #e0e0e0;
+            border-radius: 2px;
+        }
+
+        /* Pause/Play Button */
+        .play-pause-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-weight: bold;
+            min-width: 100px;
+        }
+
+        .play-pause-btn:hover {
+            background-color: #45a049;
+        }
+
+        .play-pause-btn.paused {
+            background-color: #2196F3;
+        }
+
+        .play-pause-btn.paused:hover {
+            background-color: #0b7dda;
+        }
+
+        /* Point Manipulation Tools */
+        .point-tools {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tool-btn {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            background-color: #424242;
+            border: 2px solid #555;
+            color: #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background-color: #555;
+        }
+
+        .tool-btn.active {
+            background-color: #2196F3;
+            border-color: #2196F3;
+            color: white;
+        }
+
+        /* Parameter Panel */
+        .parameter-panel {
+            background-color: #2d2d2d;
+            padding: 15px;
+            border-radius: 4px;
+            min-width: 250px;
+            max-width: 300px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #64b5f6;
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+        }
+
+        .place-clear-btn {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .place-clear-btn:hover {
+            background-color: #0b7dda;
+        }
+
+        .parameter-group {
+            margin-bottom: 15px;
+        }
+
+        .param-label {
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .param-label-text {
+            min-width: 40px;
+        }
+
+        .param-input {
+            width: 60px;
+            padding: 4px 6px;
+            background-color: #1a1a1a;
+            border: 1px solid #555;
+            color: #e0e0e0;
+            border-radius: 2px;
+            font-size: 12px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            margin-top: 6px;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #2196F3;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #2196F3;
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider-bounds {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+            gap: 8px;
+        }
+
+        .slider-bound-input {
+            width: 45px;
+            padding: 2px 4px;
+            background-color: #1a1a1a;
+            border: 1px solid #555;
+            color: #e0e0e0;
+            border-radius: 2px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .param-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .param-checkbox input[type="checkbox"] {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .param-checkbox label {
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* Density Distribution Menu */
+        .density-panel {
+            background-color: #2d2d2d;
+            padding: 15px;
+            border-radius: 4px;
+            min-width: 220px;
+            max-width: 250px;
+        }
+
+        .density-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .density-option {
+            padding: 8px 12px;
+            background-color: #1a1a1a;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+
+        .density-option:hover {
+            background-color: #333;
+            border-color: #777;
+        }
+
+        .density-option.active {
+            background-color: #2196F3;
+            border-color: #2196F3;
+            color: white;
+        }
+
+        .gaussian-params {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+            display: none;
+        }
+
+        .gaussian-params.active {
+            display: block;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .parameter-panel,
+            .density-panel {
+                max-width: 100%;
+            }
+
+            .canvas-container {
+                max-width: 600px;
+                margin: 0 auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Statistics Bar -->
+        <div class="stats-bar">
+            <span style="font-weight: bold; color: #888;">Real-time Statistics:</span>
+            <div class="stat-item">
+                <input type="checkbox" id="energyCheckbox" title="Calculate and display total Riesz energy (may impact performance)">
+                <label for="energyCheckbox">Riesz Energy:</label>
+                <span class="stat-value" id="energyValue">—</span>
+            </div>
+            <div class="stat-item">
+                <input type="checkbox" id="volumeRsdCheckbox" title="Calculate and display volume relative standard deviation (may impact performance)">
+                <label for="volumeRsdCheckbox">Volume RSD:</label>
+                <span class="stat-value" id="volumeRsdValue">—</span>
+            </div>
+        </div>
+
+        <!-- Main Content Layout -->
+        <div class="main-content">
+            <!-- Canvas Section -->
+            <div class="canvas-section">
+                <!-- Canvas with Axis Labels -->
+                <div class="canvas-container">
+                    <canvas id="canvas"></canvas>
+                    <div class="axis-label y-label">1.0</div>
+                    <div class="axis-label x-label">1.0</div>
+                </div>
+
+                <!-- Control Bar: FPS Monitor, Play/Pause, and Point Tools -->
+                <div class="control-bar">
+                    <!-- FPS Monitor -->
+                    <div class="fps-monitor" id="fpsMonitor">
+                        <div class="fps-monitor-content">
+                            <div>
+                                Target FPS: <input type="number" id="targetFpsInput" class="fps-input" value="30" min="1" max="300" title="Set the target frame rate">
+                            </div>
+                            <div>
+                                Actual FPS: <span id="actualFpsValue">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Play/Pause Button -->
+                    <button class="play-pause-btn paused" id="playPauseBtn" title="Play or pause the simulation">▶ Play</button>
+
+                    <!-- Point Manipulation Tools -->
+                    <div class="point-tools">
+                        <button class="tool-btn" id="pencilBtn" title="Click to place points (pencil tool)">✎</button>
+                        <button class="tool-btn" id="eraserBtn" title="Click to remove points (eraser tool)">⊘</button>
+                        <button class="tool-btn active" id="noneBtn" title="Disable point placement/removal">✕</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parameter Panel -->
+            <div class="parameter-panel">
+                <div class="panel-title">Parameters</div>
+                
+                <button class="place-clear-btn" id="placePointsBtn">Place Points</button>
+
+                <!-- Parameter: s (Riesz Exponent) -->
+                <div class="parameter-group">
+                    <div class="param-label">
+                        <span class="param-label-text">s =</span>
+                        <input type="number" id="sInput" class="param-input" value="3" step="0.1" title="Riesz exponent">
+                    </div>
+                    <input type="range" id="sSlider" min="0" max="10" value="3" step="0.1" title="Riesz exponent slider">
+                    <div class="slider-bounds">
+                        <input type="number" id="sMinBound" class="slider-bound-input" value="0" title="Click to edit minimum bound">
+                        <input type="number" id="sMaxBound" class="slider-bound-input" value="10" title="Click to edit maximum bound">
+                    </div>
+                </div>
+
+                <!-- Parameter: k (Number of Nearest Neighbors) -->
+                <div class="parameter-group">
+                    <div class="param-label">
+                        <span class="param-label-text">k =</span>
+                        <input type="number" id="kInput" class="param-input" value="6" min="1" title="Number of nearest neighbors">
+                    </div>
+                    <input type="range" id="kSlider" min="1" max="50" value="6" step="1" title="k slider (integer steps)">
+                    <div class="param-checkbox">
+                        <input type="checkbox" id="kAllPointsCheckbox" title="Lock k to equal the total number of points n">
+                        <label for="kAllPointsCheckbox">all points</label>
+                    </div>
+                </div>
+
+                <!-- Parameter: n (Number of Points) -->
+                <div class="parameter-group">
+                    <div class="param-label">
+                        <span class="param-label-text">n =</span>
+                        <input type="number" id="nInput" class="param-input" value="200" min="1" title="Total number of points">
+                    </div>
+                    <input type="range" id="nSlider" min="1" max="500" value="200" step="1" title="n slider (integer steps)">
+                </div>
+
+                <!-- Parameter: maxstep (Maximum Step Size) -->
+                <div class="parameter-group">
+                    <div class="param-label">
+                        <span class="param-label-text">maxstep =</span>
+                        <input type="number" id="maxstepInput" class="param-input" value="0.02" step="0.001" title="Maximum distance a point can move per step">
+                    </div>
+                    <input type="range" id="maxstepSlider" min="0" max="1" value="0.02" step="0.001" title="maxstep slider">
+                    <div class="slider-bounds">
+                        <span>0</span>
+                        <span>1.0</span>
+                    </div>
+                </div>
+
+                <!-- Parameter: noise (Random Jitter) -->
+                <div class="parameter-group">
+                    <div class="param-label">
+                        <span class="param-label-text">noise =</span>
+                        <input type="number" id="noiseInput" class="param-input" value="0" min="0" max="1" step="0.01" title="Amount of random jitter to add each step">
+                    </div>
+                    <input type="range" id="noiseSlider" min="0" max="1" value="0" step="0.01" title="noise slider">
+                    <div class="slider-bounds">
+                        <span>0</span>
+                        <span>1.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Density Distribution Menu -->
+            <div class="density-panel">
+                <div class="panel-title">Density Distribution</div>
+                
+                <div class="density-options">
+                    <div class="density-option active" data-density="uniform" title="Uniform (constant) density distribution">
+                        Uniform
+                    </div>
+                    <div class="density-option" data-density="gaussian" title="Gaussian (normal) density distribution">
+                        Gaussian
+                    </div>
+                </div>
+
+                <!-- Gaussian Parameters -->
+                <div class="gaussian-params" id="gaussianParams">
+                    <div class="param-label">
+                        <span class="param-label-text">σ =</span>
+                        <input type="number" id="gaussianSigmaInput" class="param-input" value="1.0" step="0.1" title="Standard deviation of Gaussian distribution">
+                    </div>
+                    <input type="range" id="gaussianSigmaSlider" min="0.1" max="5" value="1.0" step="0.1" title="Gaussian sigma slider">
+                    <div class="slider-bounds">
+                        <input type="number" id="gaussianSigmaMinBound" class="slider-bound-input" value="0.1" title="Click to edit minimum bound">
+                        <input type="number" id="gaussianSigmaMaxBound" class="slider-bound-input" value="5" title="Click to edit maximum bound">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // CONFIGURATION AND STATE MANAGEMENT
+        // ============================================================================
+
+        /**
+         * Global application state object
+         * Stores all simulation parameters and internal state
+         */
+        const appState = {
+            // Particle positions: array of [x, y] coordinates
+            particles: [],
+            
+            // Simulation parameters
+            s: 3,                    // Riesz exponent
+            k: 6,                    // Number of nearest neighbors
+            n: 200,                  // Target number of particles
+            maxstep: 0.02,            // Maximum step size
+            noise: 0,                 // Amount of random jitter
+            
+            // Density distribution settings
+            densityType: 'uniform',   // 'uniform' or 'gaussian'
+            gaussianSigma: 1.0,       // Standard deviation for Gaussian distribution
+            
+            // Simulation control
+            isPlaying: false,         // Is simulation running?
+            pointTool: null,          // Current point manipulation tool: null, 'pencil', or 'eraser'
+            
+            // FPS tracking
+            targetFps: 30,
+            actualFps: 0,
+            lastFrameTime: Date.now(),
+            frameCount: 0,
+            fpsUpdateInterval: 500,  // Update displayed FPS every 500ms
+            lastFpsUpdate: Date.now(),
+            
+            // Statistics calculation
+            calculateEnergy: false,
+            calculateVolumeRsd: false,
+            
+            // Slider bounds
+            sMinBound: 0,
+            sMaxBound: 10,
+            gaussianSigmaMinBound: 0.1,
+            gaussianSigmaMaxBound: 5,
+        };
+
+        // ============================================================================
+        // DOM ELEMENT REFERENCES
+        // ============================================================================
+
+        const elements = {
+            // Canvas and drawing
+            canvas: document.getElementById('canvas'),
+            ctx: document.getElementById('canvas').getContext('2d'),
+            
+            // Parameter inputs
+            sInput: document.getElementById('sInput'),
+            sSlider: document.getElementById('sSlider'),
+            sMinBound: document.getElementById('sMinBound'),
+            sMaxBound: document.getElementById('sMaxBound'),
+            
+            kInput: document.getElementById('kInput'),
+            kSlider: document.getElementById('kSlider'),
+            kAllPointsCheckbox: document.getElementById('kAllPointsCheckbox'),
+            
+            nInput: document.getElementById('nInput'),
+            nSlider: document.getElementById('nSlider'),
+            placePointsBtn: document.getElementById('placePointsBtn'),
+            
+            maxstepInput: document.getElementById('maxstepInput'),
+            maxstepSlider: document.getElementById('maxstepSlider'),
+            
+            noiseInput: document.getElementById('noiseInput'),
+            noiseSlider: document.getElementById('noiseSlider'),
+            
+            // Controls
+            playPauseBtn: document.getElementById('playPauseBtn'),
+            pencilBtn: document.getElementById('pencilBtn'),
+            eraserBtn: document.getElementById('eraserBtn'),
+            noneBtn: document.getElementById('noneBtn'),
+            
+            // FPS
+            fpsMonitor: document.getElementById('fpsMonitor'),
+            targetFpsInput: document.getElementById('targetFpsInput'),
+            actualFpsValue: document.getElementById('actualFpsValue'),
+            
+            // Statistics
+            energyCheckbox: document.getElementById('energyCheckbox'),
+            energyValue: document.getElementById('energyValue'),
+            volumeRsdCheckbox: document.getElementById('volumeRsdCheckbox'),
+            volumeRsdValue: document.getElementById('volumeRsdValue'),
+            
+            // Density distribution
+            densityOptions: document.querySelectorAll('.density-option'),
+            gaussianParams: document.getElementById('gaussianParams'),
+            gaussianSigmaInput: document.getElementById('gaussianSigmaInput'),
+            gaussianSigmaSlider: document.getElementById('gaussianSigmaSlider'),
+            gaussianSigmaMinBound: document.getElementById('gaussianSigmaMinBound'),
+            gaussianSigmaMaxBound: document.getElementById('gaussianSigmaMaxBound'),
+        };
+
+        // ============================================================================
+        // DENSITY DISTRIBUTION FUNCTIONS
+        // ============================================================================
+
+        /**
+         * Generate points according to the current density distribution
+         * @param {number} count - Number of points to generate
+         * @returns {Array} Array of [x, y] coordinate pairs
+         */
+        function generatePointsByDensity(count) {
+            const points = [];
+            
+            if (appState.densityType === 'uniform') {
+                // Uniform distribution: random points in [-1, 1]²
+                for (let i = 0; i < count; i++) {
+                    points.push([
+                        2 * Math.random() - 1,
+                        2 * Math.random() - 1
+                    ]);
+                }
+            } else if (appState.densityType === 'gaussian') {
+                // Gaussian distribution: centered at origin with given sigma
+                const sigma = appState.gaussianSigma;
+                for (let i = 0; i < count; i++) {
+                    // Box-Muller transform for Gaussian random numbers
+                    const u1 = Math.random();
+                    const u2 = Math.random();
+                    const x = sigma * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                    const y = sigma * Math.sqrt(-2 * Math.log(u1)) * Math.sin(2 * Math.PI * u2);
+                    
+                    // Clamp to [-1, 1] to keep points in valid region
+                    points.push([
+                        Math.max(-1, Math.min(1, x)),
+                        Math.max(-1, Math.min(1, y))
+                    ]);
+                }
+            }
+            
+            return points;
+        }
+
+        // ============================================================================
+        // PARTICLE MANIPULATION FUNCTIONS
+        // ============================================================================
+
+        /**
+         * Place initial points with the current distribution
+         */
+        function placePoints() {
+            appState.particles = generatePointsByDensity(appState.n);
+            updatePlacePointsButton();
+            draw();
+        }
+
+        /**
+         * Clear all points from the canvas
+         */
+        function clearPoints() {
+            appState.particles = [];
+            appState.n = 0;
+            updateNParameterDisplay();
+            updatePlacePointsButton();
+            draw();
+        }
+
+        /**
+         * Update the place/clear points button text and state
+         */
+        function updatePlacePointsButton() {
+            if (appState.particles.length === 0) {
+                elements.placePointsBtn.textContent = 'Place Points';
+                elements.placePointsBtn.onclick = placePoints;
+            } else {
+                elements.placePointsBtn.textContent = 'Clear Points';
+                elements.placePointsBtn.onclick = clearPoints;
+            }
+        }
+
+        /**
+         * Add a single point at the given coordinates (pencil tool)
+         * @param {number} x - X coordinate
+         * @param {number} y - Y coordinate
+         */
+        function addPoint(x, y) {
+            // Check if a point already exists at this location (with small tolerance)
+            const tolerance = 0.01;
+            for (const particle of appState.particles) {
+                const dist = Math.sqrt((particle[0] - x) ** 2 + (particle[1] - y) ** 2);
+                if (dist < tolerance) return; // Don't place overlapping points
+            }
+            
+            appState.particles.push([x, y]);
+            appState.n = appState.particles.length;
+            updateNParameterDisplay();
+            updatePlacePointsButton();
+            
+            // If k is locked to "all points", update k
+            if (appState.kAllPointsLocked) {
+                appState.k = appState.n;
+                updateKParameterDisplay();
+            }
+        }
+
+        /**
+         * Remove the point closest to the given coordinates (eraser tool)
+         * @param {number} x - X coordinate
+         * @param {number} y - Y coordinate
+         */
+        function removeNearestPoint(x, y) {
+            if (appState.particles.length === 0) return;
+            
+            let minDist = Infinity;
+            let minIndex = -1;
+            
+            for (let i = 0; i < appState.particles.length; i++) {
+                const p = appState.particles[i];
+                const dist = Math.sqrt((p[0] - x) ** 2 + (p[1] - y) ** 2);
+                if (dist < minDist) {
+                    minDist = dist;
+                    minIndex = i;
+                }
+            }
+            
+            if (minIndex !== -1) {
+                appState.particles.splice(minIndex, 1);
+                appState.n = appState.particles.length;
+                updateNParameterDisplay();
+                updatePlacePointsButton();
+                
+                // If k is locked to "all points", update k
+                if (appState.kAllPointsLocked) {
+                    appState.k = appState.n;
+                    updateKParameterDisplay();
+                }
+            }
+        }
+
+        // ============================================================================
+        // CANVAS COORDINATE CONVERSION
+        // ============================================================================
+
+        /**
+         * Convert canvas pixel coordinates to simulation space coordinates [-1, 1]²
+         * @param {number} pixelX - Pixel x coordinate
+         * @param {number} pixelY - Pixel y coordinate
+         * @returns {Array} [x, y] in simulation space
+         */
+        function canvasToSimSpace(pixelX, pixelY) {
+            const rect = elements.canvas.getBoundingClientRect();
+            const canvasX = pixelX - rect.left;
+            const canvasY = pixelY - rect.top;
+            
+            const simX = (canvasX / elements.canvas.width) * 2 - 1;
+            const simY = -(canvasY / elements.canvas.height) * 2 + 1; // Flip Y axis
+            
+            return [simX, simY];
+        }
+
+        /**
+         * Convert simulation space coordinates [-1, 1]² to canvas pixel coordinates
+         * @param {number} simX - X in [-1, 1]
+         * @param {number} simY - Y in [-1, 1]
+         * @returns {Object} {x, y} in pixel coordinates
+         */
+        function simToCanvasSpace(simX, simY) {
+            const canvasX = ((simX + 1) / 2) * elements.canvas.width;
+            const canvasY = ((-simY + 1) / 2) * elements.canvas.height;
+            return { x: canvasX, y: canvasY };
+        }
+
+        // ============================================================================
+        // CANVAS RENDERING
+        // ============================================================================
+
+        /**
+         * Draw the simulation state to the canvas
+         * Shows particles as small circles with axes
+         */
+        function draw() {
+            const ctx = elements.ctx;
+            const width = elements.canvas.width;
+            const height = elements.canvas.height;
+            
+            // Clear canvas
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw grid (light lines at major intervals)
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            
+            // Vertical lines at -0.5, 0, 0.5
+            for (let i = -1; i <= 1; i += 0.5) {
+                const pos = simToCanvasSpace(i, 0);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, 0);
+                ctx.lineTo(pos.x, height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines at -0.5, 0, 0.5
+            for (let i = -1; i <= 1; i += 0.5) {
+                const pos = simToCanvasSpace(0, i);
+                ctx.beginPath();
+                ctx.moveTo(0, pos.y);
+                ctx.lineTo(width, pos.y);
+                ctx.stroke();
+            }
+            
+            // Draw border at ±1
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+                simToCanvasSpace(-1, 1).x,
+                simToCanvasSpace(-1, 1).y,
+                width - 2 * simToCanvasSpace(-1, 1).x + 2 * simToCanvasSpace(-1, 1).x,
+                height - 2 * simToCanvasSpace(-1, 1).y + 2 * simToCanvasSpace(-1, 1).y
+            );
+            ctx.strokeRect(0, 0, width, height);
+            
+            // Draw particles
+            ctx.fillStyle = '#64b5f6';
+            ctx.beginPath();
+            for (const particle of appState.particles) {
+                const pos = simToCanvasSpace(particle[0], particle[1]);
+                ctx.moveTo(pos.x + 3, pos.y);
+                ctx.arc(pos.x, pos.y, 3, 0, 2 * Math.PI);
+            }
+            ctx.fill();
+        }
+
+        // ============================================================================
+        // PARAMETER SYNCHRONIZATION FUNCTIONS
+        // ============================================================================
+
+        /**
+         * Keep s parameter synchronized between input, slider, and state
+         * Handles slider bound changes
+         */
+        function syncSParameter() {
+            const value = parseFloat(elements.sInput.value);
+            if (!isNaN(value)) {
+                appState.s = value;
+                
+                // Check if value is outside slider bounds
+                if (value < appState.sMinBound) {
+                    appState.sMinBound = Math.floor(value);
+                    elements.sMinBound.value = appState.sMinBound;
+                }
+                if (value > appState.sMaxBound) {
+                    appState.sMaxBound = Math.ceil(value);
+                    elements.sMaxBound.value = appState.sMaxBound;
+                }
+                
+                // Update slider range
+                elements.sSlider.min = appState.sMinBound;
+                elements.sSlider.max = appState.sMaxBound;
+                elements.sSlider.value = value;
+            }
+        }
+
+        /**
+         * Update s parameter display without triggering sync
+         */
+        function updateSParameterDisplay() {
+            elements.sInput.value = appState.s.toFixed(2);
+            elements.sSlider.value = appState.s;
+        }
+
+        /**
+         * Keep k parameter synchronized between input, slider, and state
+         * Handles "all points" checkbox locking
+         */
+        function syncKParameter() {
+            if (appState.kAllPointsLocked) return; // Don't sync if locked
+            
+            const value = parseInt(elements.kInput.value);
+            if (!isNaN(value) && value >= 1) {
+                appState.k = value;
+                elements.kSlider.value = value;
+                // Limit slider to reasonable maximum based on current n
+                elements.kSlider.max = Math.max(50, appState.n);
+            }
+        }
+
+        /**
+         * Update k parameter display
+         */
+        function updateKParameterDisplay() {
+            elements.kInput.value = appState.k;
+            elements.kSlider.value = appState.k;
+            elements.kSlider.max = Math.max(50, appState.n);
+        }
+
+        /**
+         * Keep n parameter synchronized between input and slider
+         */
+        function syncNParameter() {
+            const value = parseInt(elements.nInput.value);
+            if (!isNaN(value) && value >= 1) {
+                const oldN = appState.n;
+                appState.n = value;
+                
+                if (appState.particles.length > 0) {
+                    // Points exist: adjust the number of points
+                    if (value > oldN) {
+                        // Add new points using current density distribution
+                        const newPoints = generatePointsByDensity(value - oldN);
+                        appState.particles.push(...newPoints);
+                    } else if (value < oldN) {
+                        // Remove excess points randomly
+                        appState.particles = appState.particles.slice(0, value);
+                    }
+                }
+                
+                elements.nSlider.value = value;
+                // Update k maximum
+                elements.kSlider.max = Math.max(50, appState.n);
+                
+                // If k is locked to "all points", update k
+                if (appState.kAllPointsLocked) {
+                    appState.k = appState.n;
+                    updateKParameterDisplay();
+                }
+            }
+        }
+
+        /**
+         * Update n parameter display
+         */
+        function updateNParameterDisplay() {
+            elements.nInput.value = appState.n;
+            elements.nSlider.value = appState.n;
+            elements.nSlider.max = Math.max(500, appState.n + 100);
+            elements.kSlider.max = Math.max(50, appState.n);
+        }
+
+        /**
+         * Keep maxstep synchronized
+         */
+        function syncMaxstepParameter() {
+            const value = parseFloat(elements.maxstepInput.value);
+            if (!isNaN(value) && value >= 0 && value <= 1) {
+                appState.maxstep = value;
+                elements.maxstepSlider.value = value;
+            }
+        }
+
+        /**
+         * Keep noise synchronized
+         */
+        function syncNoiseParameter() {
+            const value = parseFloat(elements.noiseInput.value);
+            if (!isNaN(value) && value >= 0 && value <= 1) {
+                appState.noise = value;
+                elements.noiseSlider.value = value;
+            }
+        }
+
+        /**
+         * Keep Gaussian sigma synchronized with slider bounds
+         */
+        function syncGaussianSigmaParameter() {
+            const value = parseFloat(elements.gaussianSigmaInput.value);
+            const minBound = parseFloat(elements.gaussianSigmaMinBound.value);
+            const maxBound = parseFloat(elements.gaussianSigmaMaxBound.value);
+            
+            if (!isNaN(value)) {
+                appState.gaussianSigma = value;
+                
+                // Check bounds and update if needed
+                if (value < minBound) {
+                    appState.gaussianSigmaMinBound = parseFloat(value.toFixed(1));
+                    elements.gaussianSigmaMinBound.value = appState.gaussianSigmaMinBound;
+                }
+                if (value > maxBound) {
+                    appState.gaussianSigmaMaxBound = parseFloat(value.toFixed(1));
+                    elements.gaussianSigmaMaxBound.value = appState.gaussianSigmaMaxBound;
+                }
+                
+                // Update slider
+                elements.gaussianSigmaSlider.min = appState.gaussianSigmaMinBound;
+                elements.gaussianSigmaSlider.max = appState.gaussianSigmaMaxBound;
+                elements.gaussianSigmaSlider.value = value;
+            }
+        }
+
+        /**
+         * Update Gaussian sigma display
+         */
+        function updateGaussianSigmaDisplay() {
+            elements.gaussianSigmaInput.value = appState.gaussianSigma.toFixed(2);
+            elements.gaussianSigmaSlider.value = appState.gaussianSigma;
+        }
+
+        // ============================================================================
+        // POINT TOOL MANAGEMENT
+        // ============================================================================
+
+        /**
+         * Set the active point manipulation tool
+         * @param {string|null} tool - 'pencil', 'eraser', or null
+         */
+        function setPointTool(tool) {
+            appState.pointTool = tool;
+            
+            // Update button states
+            elements.pencilBtn.classList.remove('active');
+            elements.eraserBtn.classList.remove('active');
+            elements.noneBtn.classList.remove('active');
+            
+            if (tool === 'pencil') {
+                elements.pencilBtn.classList.add('active');
+            } else if (tool === 'eraser') {
+                elements.eraserBtn.classList.add('active');
+            } else {
+                elements.noneBtn.classList.add('active');
+            }
+        }
+
+        // ============================================================================
+        // PLAY/PAUSE AND SIMULATION CONTROL
+        // ============================================================================
+
+        /**
+         * Toggle pause/play state
+         */
+        function togglePlayPause() {
+            appState.isPlaying = !appState.isPlaying;
+            updatePlayPauseButton();
+        }
+
+        /**
+         * Update the play/pause button appearance
+         */
+        function updatePlayPauseButton() {
+            if (appState.isPlaying) {
+                elements.playPauseBtn.textContent = '⏸ Pause';
+                elements.playPauseBtn.classList.remove('paused');
+            } else {
+                elements.playPauseBtn.textContent = '▶ Play';
+                elements.playPauseBtn.classList.add('paused');
+            }
+        }
+
+        // ============================================================================
+        // SIMULATION STEP (calls backend)
+        // ============================================================================
+
+        /**
+         * Perform one simulation step by calling the backend
+         * TBD BACKEND HOSTING METHOD - This will depend on Flask, FastAPI, AWS Lambda, etc.
+         */
+        async function stepSimulation() {
+            if (!appState.isPlaying || appState.particles.length === 0) return;
+            
+            try {
+                // ═══════════════════════════════════════════════════════════════
+                // TBD: BACKEND HOSTING METHOD
+                // This function needs to be updated based on the backend service
+                // Currently assumes Flask/FastAPI on localhost:5000
+                // ═══════════════════════════════════════════════════════════════
+                
+                const requestData = {
+                    particles: appState.particles,
+                    s: appState.s,
+                    k: Math.min(appState.k, appState.particles.length), // k can't exceed n
+                    n: appState.particles.length,
+                    maxstep: appState.maxstep,
+                    noise: appState.noise,
+                    densityType: appState.densityType,
+                    gaussianSigma: appState.gaussianSigma,
+                    calculateEnergy: appState.calculateEnergy,
+                    calculateVolumeRsd: appState.calculateVolumeRsd
+                };
+                
+                // PLACEHOLDER: This URL needs to be updated to match actual backend
+                const response = await fetch('http://localhost:5000/step', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    console.error('Backend error:', response.statusText);
+                    return;
+                }
+                
+                const responseData = await response.json();
+                
+                // Update particle positions
+                appState.particles = responseData.particles;
+                
+                // Update statistics if requested
+                if (appState.calculateEnergy && responseData.energy !== undefined) {
+                    elements.energyValue.textContent = responseData.energy.toFixed(4);
+                }
+                
+                if (appState.calculateVolumeRsd && responseData.volumeRsd !== undefined) {
+                    elements.volumeRsdValue.textContent = responseData.volumeRsd.toFixed(6);
+                }
+                
+            } catch (error) {
+                console.error('Error during simulation step:', error);
+                // Silently continue - don't break the animation loop
+            }
+        }
+
+        // ============================================================================
+        // ANIMATION LOOP
+        // ============================================================================
+
+        /**
+         * Main animation loop
+         * Controls FPS and calls step simulation when playing
+         */
+        async function animationLoop() {
+            const now = Date.now();
+            const deltaTime = now - appState.lastFrameTime;
+            const minFrameTime = 1000 / appState.targetFps; // Milliseconds per frame
+            
+            // Only update if enough time has passed
+            if (deltaTime >= minFrameTime) {
+                appState.lastFrameTime = now;
+                
+                // Perform simulation step if playing
+                await stepSimulation();
+                
+                // Draw updated state
+                draw();
+                
+                // Update FPS counter
+                appState.frameCount++;
+                const timeSinceFpsUpdate = now - appState.lastFpsUpdate;
+                if (timeSinceFpsUpdate >= appState.fpsUpdateInterval) {
+                    appState.actualFps = Math.round((appState.frameCount * 1000) / timeSinceFpsUpdate);
+                    elements.actualFpsValue.textContent = appState.actualFps;
+                    appState.frameCount = 0;
+                    appState.lastFpsUpdate = now;
+                    
+                    // Update FPS monitor border color
+                    updateFpsMonitorColor();
+                }
+            }
+            
+            requestAnimationFrame(animationLoop);
+        }
+
+        /**
+         * Update FPS monitor border color based on performance
+         */
+        function updateFpsMonitorColor() {
+            const target = appState.targetFps;
+            const actual = appState.actualFps;
+            
+            elements.fpsMonitor.classList.remove('yellow', 'red');
+            
+            if (actual < target / 2) {
+                elements.fpsMonitor.classList.add('red');
+            } else if (actual < target) {
+                elements.fpsMonitor.classList.add('yellow');
+            }
+        }
+
+        // ============================================================================
+        // EVENT LISTENERS - PARAMETER INPUTS
+        // ============================================================================
+
+        // Riesz exponent (s)
+        elements.sInput.addEventListener('input', syncSParameter);
+        elements.sSlider.addEventListener('input', (e) => {
+            appState.s = parseFloat(e.target.value);
+            updateSParameterDisplay();
+        });
+        elements.sMinBound.addEventListener('change', (e) => {
+            const newMin = parseFloat(e.target.value);
+            const maxBound = parseFloat(elements.sMaxBound.value);
+            if (newMin < maxBound) {
+                appState.sMinBound = newMin;
+                elements.sSlider.min = newMin;
+            } else {
+                elements.sMinBound.value = appState.sMinBound;
+            }
+        });
+        elements.sMaxBound.addEventListener('change', (e) => {
+            const newMax = parseFloat(e.target.value);
+            const minBound = parseFloat(elements.sMinBound.value);
+            if (newMax > minBound) {
+                appState.sMaxBound = newMax;
+                elements.sSlider.max = newMax;
+            } else {
+                elements.sMaxBound.value = appState.sMaxBound;
+            }
+        });
+
+        // Number of nearest neighbors (k)
+        appState.kAllPointsLocked = false;
+        elements.kAllPointsCheckbox.addEventListener('change', (e) => {
+            appState.kAllPointsLocked = e.target.checked;
+            if (appState.kAllPointsLocked) {
+                appState.k = appState.n;
+                elements.kInput.disabled = true;
+                elements.kSlider.disabled = true;
+            } else {
+                elements.kInput.disabled = false;
+                elements.kSlider.disabled = false;
+            }
+            updateKParameterDisplay();
+        });
+        elements.kInput.addEventListener('input', syncKParameter);
+        elements.kSlider.addEventListener('input', (e) => {
+            appState.k = parseInt(e.target.value);
+            updateKParameterDisplay();
+        });
+
+        // Number of points (n)
+        elements.nInput.addEventListener('input', syncNParameter);
+        elements.nSlider.addEventListener('input', (e) => {
+            appState.n = parseInt(e.target.value);
+            updateNParameterDisplay();
+            syncNParameter();
+        });
+
+        // Maximum step size (maxstep)
+        elements.maxstepInput.addEventListener('input', syncMaxstepParameter);
+        elements.maxstepSlider.addEventListener('input', (e) => {
+            appState.maxstep = parseFloat(e.target.value);
+            elements.maxstepInput.value = appState.maxstep.toFixed(3);
+        });
+
+        // Noise
+        elements.noiseInput.addEventListener('input', syncNoiseParameter);
+        elements.noiseSlider.addEventListener('input', (e) => {
+            appState.noise = parseFloat(e.target.value);
+            elements.noiseInput.value = appState.noise.toFixed(2);
+        });
+
+        // ============================================================================
+        // EVENT LISTENERS - CONTROLS
+        // ============================================================================
+
+        elements.playPauseBtn.addEventListener('click', togglePlayPause);
+        
+        elements.pencilBtn.addEventListener('click', () => setPointTool('pencil'));
+        elements.eraserBtn.addEventListener('click', () => setPointTool('eraser'));
+        elements.noneBtn.addEventListener('click', () => setPointTool(null));
+
+        // Canvas click handling for point tools
+        elements.canvas.addEventListener('click', (e) => {
+            if (!appState.pointTool) return;
+            
+            const [simX, simY] = canvasToSimSpace(e.clientX, e.clientY);
+            
+            if (appState.pointTool === 'pencil') {
+                addPoint(simX, simY);
+            } else if (appState.pointTool === 'eraser') {
+                removeNearestPoint(simX, simY);
+            }
+            
+            draw();
+        });
+
+        // FPS target input
+        elements.targetFpsInput.addEventListener('change', (e) => {
+            const value = parseInt(e.target.value);
+            if (!isNaN(value) && value >= 1 && value <= 300) {
+                appState.targetFps = value;
+            } else {
+                elements.targetFpsInput.value = appState.targetFps;
+            }
+        });
+
+        // ============================================================================
+        // EVENT LISTENERS - STATISTICS AND DENSITY
+        // ============================================================================
+
+        elements.energyCheckbox.addEventListener('change', (e) => {
+            appState.calculateEnergy = e.target.checked;
+            if (!appState.calculateEnergy) {
+                elements.energyValue.textContent = '—';
+            }
+        });
+
+        elements.volumeRsdCheckbox.addEventListener('change', (e) => {
+            appState.calculateVolumeRsd = e.target.checked;
+            if (!appState.calculateVolumeRsd) {
+                elements.volumeRsdValue.textContent = '—';
+            }
+        });
+
+        // Density distribution menu
+        elements.densityOptions.forEach(option => {
+            option.addEventListener('click', (e) => {
+                // Remove active class from all options
+                elements.densityOptions.forEach(opt => opt.classList.remove('active'));
+                // Add active class to clicked option
+                e.target.classList.add('active');
+                
+                appState.densityType = e.target.dataset.density;
+                
+                // Show/hide Gaussian parameters
+                if (appState.densityType === 'gaussian') {
+                    elements.gaussianParams.classList.add('active');
+                } else {
+                    elements.gaussianParams.classList.remove('active');
+                }
+            });
+        });
+
+        // Gaussian sigma parameters
+        elements.gaussianSigmaInput.addEventListener('input', syncGaussianSigmaParameter);
+        elements.gaussianSigmaSlider.addEventListener('input', (e) => {
+            appState.gaussianSigma = parseFloat(e.target.value);
+            updateGaussianSigmaDisplay();
+        });
+        elements.gaussianSigmaMinBound.addEventListener('change', (e) => {
+            const newMin = parseFloat(e.target.value);
+            const maxBound = parseFloat(elements.gaussianSigmaMaxBound.value);
+            if (newMin < maxBound) {
+                appState.gaussianSigmaMinBound = newMin;
+                elements.gaussianSigmaSlider.min = newMin;
+            } else {
+                elements.gaussianSigmaMinBound.value = appState.gaussianSigmaMinBound;
+            }
+        });
+        elements.gaussianSigmaMaxBound.addEventListener('change', (e) => {
+            const newMax = parseFloat(e.target.value);
+            const minBound = parseFloat(elements.gaussianSigmaMinBound.value);
+            if (newMax > minBound) {
+                appState.gaussianSigmaMaxBound = newMax;
+                elements.gaussianSigmaSlider.max = newMax;
+            } else {
+                elements.gaussianSigmaMaxBound.value = appState.gaussianSigmaMaxBound;
+            }
+        });
+
+        // ============================================================================
+        // CANVAS RESIZING
+        // ============================================================================
+
+        /**
+         * Set canvas size to match container (keeping square aspect ratio)
+         */
+        function resizeCanvas() {
+            const container = elements.canvas.parentElement;
+            const size = Math.min(container.clientWidth, container.clientHeight);
+            elements.canvas.width = size;
+            elements.canvas.height = size;
+            draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        /**
+         * Initialize the application
+         */
+        function init() {
+            // Set initial canvas size
+            resizeCanvas();
+            
+            // Initialize UI state
+            updatePlayPauseButton();
+            updatePlacePointsButton();
+            setPointTool(null);
+            
+            // Start animation loop
+            animationLoop();
+        }
+
+        // Start when DOM is ready
+        init();
+    </script>
+</body>
+</html>
