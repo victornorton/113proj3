@@ -161,6 +161,52 @@ def get_weight_functions(s, dim, density_type, gaussian_sigma=1.0):
     return w, w_grad
 
 
+def normalize_particle_density_params(
+    particle_density_params, point_count, default_density_type='uniform', default_gaussian_sigma=1.0
+):
+    """
+    Normalize per-particle density metadata to match the particle count.
+
+    Each particle gets a metadata object:
+    {
+        "densityType": "uniform" | "gaussian",
+        "gaussianSigma": <positive float>
+    }
+
+    If metadata is missing or malformed, default density settings are used.
+    """
+    default_density_type = default_density_type if default_density_type == 'gaussian' else 'uniform'
+    default_gaussian_sigma = float(default_gaussian_sigma)
+    if default_gaussian_sigma <= 0:
+        default_gaussian_sigma = 1.0
+
+    source = particle_density_params if isinstance(particle_density_params, list) else []
+    normalized = []
+
+    for idx in range(point_count):
+        entry = source[idx] if idx < len(source) and isinstance(source[idx], dict) else {}
+
+        density_type = entry.get('densityType', default_density_type)
+        if density_type != 'gaussian':
+            density_type = 'uniform'
+
+        gaussian_sigma = entry.get('gaussianSigma', default_gaussian_sigma)
+        try:
+            gaussian_sigma = float(gaussian_sigma)
+        except (TypeError, ValueError):
+            gaussian_sigma = default_gaussian_sigma
+
+        if gaussian_sigma <= 0:
+            gaussian_sigma = default_gaussian_sigma
+
+        normalized.append({
+            'densityType': density_type,
+            'gaussianSigma': gaussian_sigma
+        })
+
+    return normalized
+
+
 # ============================================================================
 # TORUS DISTANCE CALCULATIONS
 # ============================================================================
@@ -360,7 +406,7 @@ def pointwise_gradient(point_idx, points, s, k, w, w_grad):
 # SIMULATION STEP FUNCTION
 # ============================================================================
 
-def step_state_torus(points, maxstep, s, k, density_type, gaussian_sigma, noise_level):
+def step_state_torus(points, maxstep, s, k, density_type, gaussian_sigma, noise_level, particle_density_params=None):
     """
     Perform one gradient descent step on the torus.
     
@@ -386,14 +432,24 @@ def step_state_torus(points, maxstep, s, k, density_type, gaussian_sigma, noise_
     if n == 0:
         return points
     
-    # Get density and weight functions for this configuration
-    w, w_grad = get_weight_functions(s, DIM, density_type, gaussian_sigma)
+    density_metadata = normalize_particle_density_params(
+        particle_density_params, n, density_type, gaussian_sigma
+    )
+    weight_function_cache = {}
     
     # Calculate gradient for each point
     gradients = np.zeros_like(points)
     max_step_magnitude = 0
     
     for i in range(n):
+        density_config = density_metadata[i]
+        cache_key = (density_config['densityType'], density_config['gaussianSigma'])
+        if cache_key not in weight_function_cache:
+            weight_function_cache[cache_key] = get_weight_functions(
+                s, DIM, density_config['densityType'], density_config['gaussianSigma']
+            )
+        w, w_grad = weight_function_cache[cache_key]
+
         grad = pointwise_gradient(i, points, s, k, w, w_grad)
         gradients[i] = grad
         
@@ -426,7 +482,7 @@ def step_state_torus(points, maxstep, s, k, density_type, gaussian_sigma, noise_
 # STATISTICS CALCULATIONS
 # ============================================================================
 
-def calculate_total_energy(points, s, k, density_type, gaussian_sigma):
+def calculate_total_energy(points, s, k, density_type, gaussian_sigma, particle_density_params=None):
     """
     Calculate total Riesz potential energy of the system.
     
@@ -443,10 +499,21 @@ def calculate_total_energy(points, s, k, density_type, gaussian_sigma):
     if len(points) == 0:
         return 0.0
     
-    w, _ = get_weight_functions(s, DIM, density_type, gaussian_sigma)
+    density_metadata = normalize_particle_density_params(
+        particle_density_params, len(points), density_type, gaussian_sigma
+    )
+    weight_function_cache = {}
     
     total_energy = 0.0
     for i in range(len(points)):
+        density_config = density_metadata[i]
+        cache_key = (density_config['densityType'], density_config['gaussianSigma'])
+        if cache_key not in weight_function_cache:
+            weight_function_cache[cache_key] = get_weight_functions(
+                s, DIM, density_config['densityType'], density_config['gaussianSigma']
+            )
+        w, _ = weight_function_cache[cache_key]
+
         riesz_pot = riesz_potential_k(i, points, s, k)
         weight = w(points[i])
         total_energy += riesz_pot * weight
@@ -454,7 +521,7 @@ def calculate_total_energy(points, s, k, density_type, gaussian_sigma):
     return total_energy
 
 
-def calculate_volume_rsd(points, density_type, gaussian_sigma):
+def calculate_volume_rsd(points, density_type, gaussian_sigma, particle_density_params=None):
     """
     Calculate relative standard deviation of particle volumes.
     
@@ -476,10 +543,21 @@ def calculate_volume_rsd(points, density_type, gaussian_sigma):
     if len(points) < 2:
         return 0.0
     
-    p, _ = get_density_functions(density_type, gaussian_sigma)
+    density_metadata = normalize_particle_density_params(
+        particle_density_params, len(points), density_type, gaussian_sigma
+    )
+    density_function_cache = {}
     
     volumes = []
-    for point in points:
+    for idx, point in enumerate(points):
+        density_config = density_metadata[idx]
+        cache_key = (density_config['densityType'], density_config['gaussianSigma'])
+        if cache_key not in density_function_cache:
+            density_function_cache[cache_key], _ = get_density_functions(
+                density_config['densityType'], density_config['gaussianSigma']
+            )
+        p = density_function_cache[cache_key]
+
         min_dist = min_distance_to_neighbors(point, points)
         density = p(point)
         # Volume = density * distance^2
@@ -536,24 +614,29 @@ def step_endpoint():
         density_type = data.get('densityType', 'uniform')
         gaussian_sigma = float(data.get('gaussianSigma', 1.0))
         calculate_energy = data.get('calculateEnergy', False)
-        calculate_volume_rsd = data.get('calculateVolumeRsd', False)
+        should_calculate_volume_rsd = data.get('calculateVolumeRsd', False)
         
         # Validate inputs
         if len(particles) == 0:
             return jsonify({
                 'particles': [],
+                'particleDensityParams': [],
                 'energy': None,
                 'volumeRsd': None
             })
         
-        # Ensure k doesn't exceed number of points
-        k = min(k, len(particles) - 1)
+        particle_density_params = normalize_particle_density_params(
+            data.get('particleDensityParams', []), len(particles), density_type, gaussian_sigma
+        )
+
+        # Ensure k doesn't exceed n
+        k = min(k, len(particles))
         k = max(k, 1)  # At least 1 neighbor
         
         # Perform simulation step
         new_particles = step_state_torus(
             particles, maxstep, s, k,
-            density_type, gaussian_sigma, noise
+            density_type, gaussian_sigma, noise, particle_density_params
         )
         
         # Calculate statistics if requested
@@ -562,17 +645,18 @@ def step_endpoint():
         
         if calculate_energy:
             energy = float(calculate_total_energy(
-                new_particles, s, k, density_type, gaussian_sigma
+                new_particles, s, k, density_type, gaussian_sigma, particle_density_params
             ))
         
-        if calculate_volume_rsd:
+        if should_calculate_volume_rsd:
             volume_rsd = float(calculate_volume_rsd(
-                new_particles, density_type, gaussian_sigma
+                new_particles, density_type, gaussian_sigma, particle_density_params
             ))
         
         # Return response
         return jsonify({
             'particles': new_particles.tolist(),
+            'particleDensityParams': particle_density_params,
             'energy': energy,
             'volumeRsd': volume_rsd
         })
