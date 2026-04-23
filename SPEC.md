@@ -27,6 +27,8 @@ Below the window to the left of the pause/play button should be a small menu dis
 
 app.py is a python file that will be hosted on a tbd backend service that will accept requests from index.html that give the state of the particles and all the of the parameters, calculate the new position of points based on that information, and return the new position of points for index.html to quickly update. If extra statistics like total energy are requested, those are calculated here as well. The functions here should be based on those found in python reference code.py, particularly most up-to-date versions that treat the space like a torus and support k-nearest neighbor energies. stepStateTorus and ptWiseGradTorus_k are good examples.  
 
+
+*EVERYTHING ABOVE THIS IS HUMAN WRITTEN*
 ---
 
 ## ACCEPTANCE CRITERIA
